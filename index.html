@@ -1,0 +1,1367 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>몬스터 워로드 장비 시뮬레이션</title>
+  <style>
+:root{
+  /* Dashboard-dark (football manager) 느낌 */
+  --bg:#0b0f16;
+  --ink:#e9eef9;
+  --muted: rgba(233,238,249,.70);
+  --muted2: rgba(233,238,249,.52);
+
+  /* cards */
+  --glass: rgba(18, 24, 38, .85);
+  --glass2: rgba(18, 24, 38, .70);
+
+  /* strokes/shadows */
+  --stroke: rgba(255,255,255,.10);
+  --stroke2: rgba(255,255,255,.08);
+  --shadow: 0 18px 55px rgba(0,0,0,.55);
+
+  /* ✅ 각지게 */
+  --radius: 0px;
+
+  /* accents (주황/연두 포인트) */
+  --ok:#2ee59d;
+  --danger:#ff5b6e;
+  --accent:#ff9f43; /* primary */
+  --accent2:#78f08a; /* secondary */
+}
+    *{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial, sans-serif;
+  color:var(--ink);
+  background:
+    radial-gradient(900px 600px at 20% 15%, rgba(255,159,67,.10), transparent 60%),
+    radial-gradient(900px 600px at 80% 25%, rgba(120,240,138,.08), transparent 60%),
+    radial-gradient(1100px 800px at 50% 90%, rgba(99,102,241,.08), transparent 62%),
+    linear-gradient(180deg, #0b0f16, #0a0e14 60%, #080b10);
+  padding:14px;
+}
+.wrap{max-width:none;width:100%;margin:0 auto;display:grid;gap:14px}
+.chrome{
+  width:100%;
+  min-height: calc(100vh - 28px);
+  border:1px solid var(--stroke);
+  border-radius: 0;
+  background: rgba(10,14,20,.75);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  overflow:hidden;
+}
+.chromeTop{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:12px 14px;
+  border-bottom:1px solid var(--stroke2);
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.18));
+  flex-wrap:wrap;
+}
+.titleBox{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .traffic{
+      display:flex; gap:8px; align-items:center;
+      padding:10px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+    }
+    .dot{width:10px;height:10px;border-radius:999px;opacity:.9}
+    .dot.r{background:#ff5f57} .dot.y{background:#ffbd2e} .dot.g{background:#28c840}
+    h1{margin:0;font-size:14px;font-weight:990;letter-spacing:-.2px}
+    .sub{color:var(--muted);font-size:12px;font-weight:800}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{
+  appearance:none;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.04);
+  color:var(--ink);
+  padding:9px 12px;
+  border-radius: 0;
+  font-weight:900;
+  font-size:12px;
+  cursor:pointer;
+  transition:.12s transform,.12s background,.12s border,.12s opacity;
+  white-space:nowrap;
+}
+.btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.22)}
+.btn.primary{border-color: rgba(255,159,67,.70); background: rgba(255,159,67,.16);}
+.btn.danger{border-color: rgba(255,91,110,.70); background: rgba(255,91,110,.14);}
+.btn:disabled{opacity:.55; cursor:not-allowed; transform:none}
+    .pill{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color:var(--muted);
+      padding:10px 12px;
+      border-radius: 16px;
+      font-weight:200;
+      font-size:12px;
+    }
+
+    .grid{display:grid;grid-template-columns: 1fr 1fr; gap:14px; padding:14px; align-items:stretch}
+    @media (max-width: 1120px){ .grid{grid-template-columns:1fr} }
+.card{
+  display:flex;flex-direction:column;
+  border:1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(18,24,38,.92), rgba(12,16,26,.88));
+  border-radius: 0;
+  box-shadow: 0 16px 48px rgba(0,0,0,.45);
+  overflow:hidden;
+}
+.cardHead{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 12px;
+  border-bottom:1px solid var(--stroke2);
+  background: rgba(0,0,0,.22);
+  flex-wrap:wrap;
+}
+.cardHead b{font-size:13px;font-weight:990}
+
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{
+  appearance:none;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.04);
+  color:var(--ink);
+  padding:8px 11px;
+  border-radius: 0;
+  font-weight:100;
+  font-size:15px;
+  cursor:pointer;
+  transition:.12s transform,.12s background,.12s border;
+}
+.tab:hover{transform: translateY(-1px); background: rgba(255,255,255,.06);}
+.tab.active{border-color: rgba(255,159,67,.75); background: rgba(255,159,67,.14);}
+select, input[type="number"]{
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.28);
+  color:var(--ink);
+  border-radius: 0;
+  padding:9px 10px;
+  font-weight:850;
+  font-size:12px;
+  outline:none;
+}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .muted{color:var(--muted);font-size:12px;font-weight:800}
+.divider{height:1px;background: rgba(255,255,255,.08);}
+.iconGrid{padding:12px;display:grid;grid-template-columns: repeat(6,minmax(0,1fr)); gap:10px}
+    @media (max-width: 1100px){ .iconGrid{grid-template-columns: repeat(5,minmax(0,1fr));} }
+    @media (max-width: 900px){ .iconGrid{grid-template-columns: repeat(4,minmax(0,1fr));} }
+    @media (max-width: 640px){ .iconGrid{grid-template-columns: repeat(3,minmax(0,1fr));} }
+.tile{
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(7,10,16,.55);
+  border-radius: 0;
+  padding:10px;
+  cursor:pointer;
+  transition:.12s transform,.12s background,.12s border;
+  min-height:96px;
+  position:relative;
+  overflow:hidden;
+}
+.tile:hover{transform: translateY(-1px); background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.18);}
+.tileTop{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .qty{font-variant-numeric: tabular-nums; font-weight:990; font-size:12px; padding:6px 9px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06);}
+    .icon{
+      width:34px;height:34px;border-radius:14px; display:grid; place-items:center;
+      border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06);
+      overflow:visible;
+    }
+ .icon{
+  width:64px;
+  height:64px;
+  margin:0 auto 6px auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:visible;
+}
+
+.icon img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+
+/* ====== 아이템 카드 내부 정렬 ====== */
+.tile{
+  text-align:center;
+  padding:12px;
+}
+
+/* 아이템 이름 */
+.name{
+  margin-top:6px;
+  font-size:14px;
+  font-weight:700;
+  line-height:1.2;
+}
+
+/* 언커먼 / 레어 텍스트 */
+.rar{
+  margin-top:4px;
+  font-size:12px;
+  font-weight:700;
+  color:#9ad4ff;
+}
+
+/* 수량 뱃지 (x4) 위치 조정 */
+.qty{
+  position:absolute;
+  top:6px;
+  right:6px;
+  padding:2px 8px;
+  font-size:11px;
+  border-radius:999px;
+}
+
+
+    .combine{padding:12px;display:grid;gap:10px}
+    .line{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+    .slot{
+      flex: 1 1 260px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      border-radius: 18px;
+      padding:12px;
+      min-width: 220px;
+    }
+    .slotHead{display:flex;justify-content:space-between;align-items:center;gap:10px;
+      padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:10px;
+      font-weight:990;font-size:1px;}
+    .slotHead span{color:var(--muted);font-size:12px;font-weight:850}
+    .pick{
+      display:flex;gap:9px;align-items:center;
+      border:1px dashed rgba(255,255,255,.18);
+      border-radius: 16px;
+      padding:10px;
+      background: rgba(255,255,255,.03);
+      min-height:10px;
+    }
+    .empty{color:var(--muted);font-weight:900}
+    .eq{display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:990;color:rgba(238,244,255,.86);padding:6px 4px;user-select:none}
+    .out{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.12);
+      border-radius: 16px;
+      padding:12px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.55;
+    }
+    .strong{color:var(--ink);font-weight:990}
+    .ok{color:var(--ok)} .bad{color:var(--danger)}
+
+    .kpi{display:grid;grid-template-columns: repeat(3,minmax(0,1fr)); gap:10px}
+    @media (max-width: 900px){ .kpi{grid-template-columns:1fr 1fr} }
+    @media (max-width: 640px){ .kpi{grid-template-columns:1fr} }
+    .metric{border:1px solid rgba(255,255,255,.12);background: rgba(0,0,0,.16);border-radius: 18px;padding:12px}
+    .metric .k{color:var(--muted);font-weight:950;font-size:12px}
+    .metric .v{margin-top:6px;font-size:16px;font-weight:990;font-variant-numeric:tabular-nums}
+    .metric .u{margin-top:2px;color:var(--muted2);font-weight:850;font-size:12px}
+
+    .log{padding:0 12px 12px 12px; display:grid; gap:8px; max-height:260px; overflow:auto}
+    .logItem{border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.14); border-radius: 16px; padding:10px; font-size:12px; line-height:1.4}
+    .logItem .t{font-weight:990} .logItem .s{color:var(--muted);font-weight:800}
+
+    .invPanel{padding:7px;display:grid;gap:10px}
+    .invTable{border:1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.14); border-radius: 18px; overflow:hidden}
+    .invTableHead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+    .invTableHead b{font-size:13px}
+/* 재료 칩(일렬 표시) */
+.matRow{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.matChip{
+  display:flex; align-items:center; gap:8px;
+  padding:8px 10px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.16);
+  font-weight:950;
+  font-size:12px;
+}
+.matChip .matK{color:var(--muted); font-weight:950}
+.matChip .matV{color:var(--ink); font-variant-numeric: tabular-nums; font-weight:990}
+
+/* ====== 재료 아이콘(혼돈/인내/파괴/보석) ====== */
+.metric .k{display:flex; align-items:center; gap:8px;}
+.matIcon{
+  width:22px;
+  height:22px;
+  object-fit:contain;
+  flex:0 0 auto;
+}
+/* 상단 재료칩 아이콘 */
+.matChip{gap:8px;}
+.matChip .matI{
+  width:24px;height:24px;          /* ✅ 아이콘 잘림 방지 */
+  padding:2px;                     /* ✅ 이미지 여백 */
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:visible;
+  flex:0 0 auto;
+  line-height:0;
+}
+.matChip .matI img{
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+  display:block;
+}
+
+    .invGrid{display:grid;grid-template-columns: 260px repeat(9, clamp(64px, 6vw, 84px));}
+    .cell{padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.06); border-right:1px solid rgba(255,255,255,.06); font-size:11px; font-weight:850; color:var(--muted); text-align:center}
+    .cell.left{text-align:left; color:var(--ink); font-weight:990; display:flex; gap:10px; align-items:center}
+    .cell .miniIcon{width:30px;height:30px;border-radius:10px;border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); overflow:hidden; flex:0 0 auto}
+    .cell .miniIcon img{width:100%;height:100%;object-fit:contain}
+    .cell.count{color:var(--ink); font-weight:990; font-variant-numeric: tabular-nums}
+
+    .modalOverlay{position:fixed;inset:0;background: rgba(0,0,0,.60);display:none;align-items:center;justify-content:center;padding:18px;z-index:9999}
+    .modalOverlay.show{display:flex}
+.modal{
+  width:min(980px, 100%);
+  border:1px solid rgba(255,255,255,.14);
+  background: linear-gradient(180deg, rgba(18,24,38,.98), rgba(10,12,18,.96));
+  border-radius: 0;
+  box-shadow: 0 28px 120px rgba(0,0,0,.70);
+  backdrop-filter: blur(10px);
+  overflow:hidden;
+  max-height: calc(100vh - 48px);
+  display:flex;
+  flex-direction:column;
+}
+.mHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.10);flex-wrap:wrap}
+    .mHead h3{margin:0;font-size:14px;font-weight:990}
+    .mBody{padding:10px 14px 12px 14px; overflow:auto; flex:1 1 auto;}
+    .mHead{flex:0 0 auto}
+    .mFoot{flex:0 0 auto}
+    .mTabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .mTab{appearance:none;border:1px solid rgba(255,255,255,.14);background: rgba(255,255,255,.06);color:var(--ink);
+      padding:8px 10px;border-radius:999px;font-weight:950;font-size:12px;cursor:pointer;transition:.14s transform,.14s background,.14s border;}
+    .mTab:hover{transform: translateY(-1px); background: rgba(255,255,255,.08);}
+    .mTab.active{border-color: rgba(125,211,252,.55); background: rgba(125,211,252,.14);}
+    .mGrid{display:grid;grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px; margin-top:12px; align-items:start}
+    @media (max-width: 920px){ .mGrid{grid-template-columns:1fr} }
+    .mCard{border:1px solid rgba(255,255,255,.12);background: rgba(0,0,0,.16);border-radius: 18px;padding:10px}
+    .mCardHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:10px}
+
+    .mCardHead .mHeadL{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    /* 헤더에 들어가는 아이콘은 작게 */
+    .mCardHead .icon{
+      width:20px;height:20px;border-radius:8px;
+      background:rgba(255,255,255,.10);
+    }
+    .mCardHead .icon img{width:14px;height:14px;object-fit:contain;display:block;}
+    .mCardHead b{font-size:13px}
+    .mInputs{display:grid;grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px}
+    .mInputs label{display:grid;gap:6px;font-size:11px;font-weight:850;color:var(--muted);min-width:0}
+    .mInputs input{width:100%;min-width:0;text-align:right;padding:8px 9px;border-radius: 12px}
+    .mFoot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid rgba(255,255,255,.10);flex-wrap:wrap}
+  
+    /* v5 responsive widen / prevent clipping */
+    .invTable{overflow-x:auto;}
+    .invGrid{min-width: 900px;} /* desktop baseline so columns don't collapse */
+    @media (max-width: 1020px){
+      .wrap{max-width:none;width:100%;margin:0 auto;display:grid;gap:14px}
+      body{padding:14px;}
+    }
+    @media (max-width: 680px){
+      .grid{padding:12px;}
+      .invTable{border-radius: 18px;}
+      .invGrid{min-width: 860px;} /* allow horizontal scroll instead of clipping */
+      .invPanel .row{justify-content:flex-start;}
+      .invPanel .row .btn{flex:1 1 auto;}
+      .tabs{gap:6px;}
+      .tab{padding:8px 10px;font-size:12px;}
+    }
+
+  
+    
+
+  
+    /* v7: fill window + cleaner layout */
+    .cardHead{flex:0 0 auto}
+    .iconGrid{flex:0 0 auto}
+    .combine{flex:0 0 auto}
+    .log{flex:1 1 auto; min-height:80px}
+    .invPanel{flex:1 1 auto; display:flex; flex-direction:column}
+    .invTable{flex:1 1 auto}
+    .invGrid{width:100%}
+
+  
+    /* v7.1 height align + clean layout */
+    .chrome{min-height: calc(100vh - 36px);}
+    .grid{align-items:stretch;}
+    .card{display:flex; flex-direction:column; min-height: calc(100vh - 180px);}
+    .iconGrid{flex:0 0 auto;}
+    .combine{flex:0 0 auto;}
+    .log{flex:1 1 auto; overflow:auto;}
+    .invPanel{flex:1 1 auto; display:flex; flex-direction:column; gap:10px;}
+    .invTable{flex:1 1 auto; overflow:auto;}
+
+  
+
+/* hide iTunes traffic lights (요청) */
+.traffic{display:none !important;}
+/* 조합 탭: 슬롯 아이콘이 칸에 예쁘게 맞게 */
+#slotA .icon, #slotB .icon{
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;       /* 이미지가 넘치면 안에서만 */
+  border-radius: 0;       /* 각지게 */
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.14);
+  flex: 0 0 auto;
+}
+
+/* 조합 탭: 아이콘 이미지 비율 유지 + 중앙 */
+#slotA .icon img, #slotB .icon img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;    /* 중요: cover가 아니라 contain */
+  object-position: center;
+  display:block;
+}
+.matIcon{
+  width:22px;
+  height:22px;
+  margin-right:6px;
+  vertical-align:middle;
+  object-fit:contain;
+}
+
+/* 재료 박스 묶음 */
+.materialBox{
+  margin-top:16px;
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap:12px;
+}
+
+/* 모바일 대응 */
+@media (max-width: 700px){
+  .materialBox{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ✅ 각지게: 라운드 제거 */
+.chrome,
+.card,
+.btn,
+.pill,
+.tab,
+.tile,
+.slot,
+.out,
+.metric,
+.logItem,
+.invTable,
+.modal,
+.mTab,
+.mCard,
+.invTableHead,
+.pick,
+select,
+input[type="number"],
+.cell .miniIcon,
+.icon{
+  border-radius: 0 !important;
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="chrome">
+      <div class="chromeTop">
+        <div class="titleBox">
+          <div class="traffic" aria-hidden="true">
+            <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+          </div>
+          <div>
+            <h1>몬스터 워로드 장비 시뮬레이션</h1>
+            <div class="sub">Made By 써밋</div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="openInv">인벤토리 설정</button>
+          <span class="pill" id="statusPill">준비됨</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="cardHead">
+            <b>보유 장비 (아이콘)</b>
+            <div class="row">
+              <div class="tabs" id="gearTabs"></div>
+              <select id="rarityFilter" title="등급 필터"></select>
+              <button class="btn" id="clearSlots">슬롯 비우기</button>
+            </div>
+          </div>
+
+          <div class="iconGrid" id="iconGrid"></div>
+
+          <div class="divider"></div>
+
+          <div class="combine">
+            <div class="row" style="justify-content:space-between">
+              <b style="font-size:13px">조합</b>
+              <span class="muted">첫번째 장비(다음 등급으로 업그레이드) + 두번째 장비(재료) = 첫번째 등록된 장비 업그레이드</span>
+            </div>
+
+            <div class="line">
+              <div class="slot">
+                <div class="slotHead">첫번째 장비 <span>(결과 타입)</span></div>
+                <div class="pick" id="slotA"><div class="empty">아이콘을 클릭해서 선택</div></div>
+                <div class="muted" style="margin-top:8px">※ A, B는 <span class="strong">같은 등급</span>이어야 함</div>
+              </div>
+
+              <div class="eq">+</div>
+
+              <div class="slot">
+                <div class="slotHead">두번째 장비 <span>(재료 소모)</span></div>
+                <div class="pick" id="slotB"><div class="empty">아이콘을 클릭해서 선택</div></div>
+                <div class="muted" style="margin-top:8px">※ (원하면) 같은 부위로 제한 가능</div>
+              </div>
+
+              <div class="eq">=</div>
+
+              <div class="slot">
+                <div class="slotHead">결과 <span>(인벤토리에 +1)</span></div>
+                <div class="out" id="outBox">A와 B를 선택하면 결과가 표시됩니다.</div>
+
+                <div class="row" style="margin-top:10px;justify-content:space-between">
+                  <div class="row" style="gap:8px">
+                    <span class="muted">여러번:</span>
+                    <input id="craftTimes" type="number" min="1" step="1" value="1" style="width:86px" />
+                  </div>
+                  <div class="row">
+                    <button class="btn" id="previewCraft" disabled>미리보기</button>
+                    <button class="btn primary" id="doCraft" disabled>조합 실행</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ▼ 소모 재료 영역 (하단 고정) -->
+<div class="kpi materialBox">
+  <div class="metric">
+    <div class="k">
+      <img src="./icons/재료/혼돈.jpg" class="matIcon">
+      혼돈
+    </div>
+    <div class="v" id="needChaos">0</div>
+    <div class="u">혼돈의 강화 정수</div>
+  </div>
+
+  <div class="metric">
+    <div class="k">
+      <img src="./icons/재료/인내.jpg" class="matIcon">
+      인내
+    </div>
+    <div class="v" id="needPatience">0</div>
+    <div class="u">인내의 강화 정수</div>
+  </div>
+
+  <div class="metric">
+    <div class="k">
+      <img src="./icons/재료/파괴.jpg" class="matIcon">
+      파괴
+    </div>
+    <div class="v" id="needDestruction">0</div>
+    <div class="u">파괴의 강화 정수</div>
+  </div>
+
+  <div class="metric">
+    <div class="k">
+      <img src="./icons/보석.jpg" class="matIcon">
+      보석
+    </div>
+    <div class="v" id="needJewel">0</div>
+    <div class="u">조합 보석</div>
+  </div>
+</div>
+
+<div class="row" style="justify-content:space-between">
+              <div class="row">
+                <button class="btn" id="clearLog">로그 비우기</button>
+              </div>
+              <span class="muted">※ 인벤토리/재료는 로컬에 저장됨</span>
+            </div>
+          </div>
+
+          <div class="log" id="log"></div>
+        </div>
+
+        <div class="card">
+          <div class="cardHead">
+            <b>인벤토리 (실시간)</b>
+            <div class="row">
+              <div class="tabs" id="invTabsRight"></div>
+            </div>
+          </div>
+
+          <div class="invPanel">
+            <div class="invTable">
+              <div class="invTableHead">
+                <b id="invTitle">신발</b>
+                <span class="muted">조합/저장 시 즉시 갱신</span>
+                
+                <div class="matRow" style="margin-left:auto">
+                  <div class="matChip" title="혼돈의 정수 (실시간)"><span class="matI"><img alt="" src="./icons/재료/혼돈.jpg" onerror="this.style.display='none'"></span><span class="matK">혼돈</span><span class="matV" id="invMatChaos">0</span></div>
+                  <div class="matChip" title="인내의 정수 (실시간)"><span class="matI"><img alt="" src="./icons/재료/인내.jpg" onerror="this.style.display='none'"></span><span class="matK">인내</span><span class="matV" id="invMatPatience">0</span></div>
+                  <div class="matChip" title="파괴의 정수 (실시간)"><span class="matI"><img alt="" src="./icons/재료/파괴.jpg" onerror="this.style.display='none'"></span><span class="matK">파괴</span><span class="matV" id="invMatDestruction">0</span></div>
+                  <div class="matChip" title="보석 (실시간)"><span class="matI"><img alt="" src="./icons/보석.jpg" onerror="this.style.display='none'"></span><span class="matK">보석</span><span class="matV" id="invMatJewel">0</span></div>
+                </div>
+</div>
+              <div class="invGrid" id="invMatrix"></div>
+            </div>
+
+            <div class="row" style="justify-content:space-between">
+              <span class="muted">표시는 “종류 × 등급” 수량표</span>
+              <div class="row">
+                <button class="btn" id="exportInv">내보내기(JSON)</button>
+                <button class="btn" id="importInv">가져오기(JSON)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modalOverlay" id="modalOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="mHead">
+        <div>
+          <h3 id="modalTitle">인벤토리 설정 (탭별 등록)</h3>
+          <div class="sub">각 탭에서 3종류 × 등급 수량 입력</div>
+          <div class="mTabs" id="mTabs"></div>
+        </div>
+        <div class="row">
+          <button class="btn danger" id="tabZero">현재 탭 전체 0</button>
+          <button class="btn" id="closeInv">닫기</button>
+        </div>
+      </div>
+
+      
+      <div class="mBody">
+        <div class="mCard" id="matCard">
+          <div class="mCardHead">
+            <b>인벤토리 재료 (10칸 중 4칸)</b>
+            <span class="muted">혼돈/인내/파괴 정수 + 보석</span>
+          </div>
+          <div class="mInputs" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
+            <label><span style="display:flex;align-items:center;gap:8px"><img class="matIcon" alt="" src="./icons/재료/혼돈.jpg" onerror="this.style.display='none'">혼돈의 정수</span><input type="number" min="0" step="1" id="matChaos" data-mat="chaos" value="0"></label>
+            <label><span style="display:flex;align-items:center;gap:8px"><img class="matIcon" alt="" src="./icons/재료/인내.jpg" onerror="this.style.display='none'">인내의 정수</span><input type="number" min="0" step="1" id="matPatience" data-mat="patience" value="0"></label>
+            <label><span style="display:flex;align-items:center;gap:8px"><img class="matIcon" alt="" src="./icons/재료/파괴.jpg" onerror="this.style.display='none'">파괴의 정수</span><input type="number" min="0" step="1" id="matDestruction" data-mat="destruction" value="0"></label>
+            <label><span style="display:flex;align-items:center;gap:8px"><img class="matIcon" alt="" src="./icons/보석.jpg" onerror="this.style.display='none'">보석</span><input type="number" min="0" step="1" id="matJewel" data-mat="jewel" value="0"></label>
+          </div>
+          <div class="row" style="justify-content:flex-end; margin-top:10px">
+            <button class="btn danger" id="matZero" title="재료를 모두 0으로">재료 전체 0</button>
+          </div>
+        </div>
+
+        <div class="mGrid" id="mGrid"></div>
+
+      </div>
+
+      <div class="mFoot">
+        <span class="muted" id="mStatus">저장 준비됨</span>
+        <div class="row">
+          <button class="btn primary" id="saveInv">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const rarityOrder = ["Common","Uncommon","Rare","Epic","Legend","Ancient","Chaos","Ultimate","God"];
+    const rarityKr = {
+      Common:"커먼", Uncommon:"언커먼", Rare:"레어", Epic:"에픽", Legend:"레전드",
+      Ancient:"에이션트", Chaos:"카오스", Ultimate:"얼티밋", God:"갓"
+    };
+    const perItemCost = { Common:5, Uncommon:10, Rare:20, Epic:35, Legend:50, Ancient:65, Chaos:75, Ultimate:100, God:150 };
+
+    // 보석(조합 시 필요) - 등급별 소모(1회 조합 기준)
+    const jewelCost = { Common:500, Uncommon:1500, Rare:2000, Epic:3000, Legend:3000, Ancient:3000, Chaos:5000, Ultimate:5000, God:5000 };
+
+    const gearDefs = {
+      "무기": ["레이피어","강철 대검","전투 망치"],
+      "투구": ["크리스탈","강철","가죽"],
+      "갑옷": ["크리스탈","강철","가죽"],
+      "신발": ["크리스탈","강철","가죽"],
+      "목걸이": ["에메랄드","사파이어","루비"],
+      "방패": ["원형","크리스탈","강철"]
+    };
+
+    const essenceNames = {
+      chaos: "혼돈의 강화 정수",
+      patience: "인내의 강화 정수",
+      destruction: "파괴의 강화 정수"
+    };
+
+    const typeToEssence = {
+      "가죽": "destruction",
+      "강철": "patience",
+      "크리스탈": "chaos",
+      "레이피어": "chaos",
+      "강철 대검": "patience",
+      "전투 망치": "destruction",
+      "에메랄드": "patience",
+      "사파이어": "chaos",
+      "루비": "destruction",
+      "크리스탈": "chaos",
+      "강철": "patience",
+      "원형": "destruction"
+    };
+
+    // ✅ 아이콘 경로 규칙(사용자 이미지 폴더에 넣으면 자동으로 표시)
+    // 폴더 구조 예시:
+    //   ./assets/icons/무기/레이피어.png
+    //   ./assets/icons/신발/가죽.png
+    //   ./assets/icons/방패/강철 방패.png
+    // 파일명은 "타입(type) 그대로" 사용(공백 포함 가능). 확장자는 .png 권장.
+const ICON_BASE = "./icons";
+
+function normalizeName(str) {
+  // 아이콘 파일명 규칙: 공백 제거(예: "강철 대검" → "강철대검")
+  return String(str)
+    .trim()
+    .replace(/\s+/g, "");
+}
+
+function getIconSrc(gear, type) {
+  const safeGear = encodeURIComponent(normalizeName(gear));
+  const safeType = encodeURIComponent(normalizeName(type));
+
+  return `${ICON_BASE}/${safeGear}/${safeType}.jpg`;
+}
+
+    const STORAGE_KEY = "equip_calc_inventory_v3";
+
+    function blankInventory(){
+      const equipment = {};
+      Object.entries(gearDefs).forEach(([gear, types]) => {
+        equipment[gear] = {};
+        types.forEach(t => {
+          equipment[gear][t] = {};
+          rarityOrder.forEach(r => { equipment[gear][t][r] = 0; });
+        });
+      });
+      return { equipment, materials: { chaos:0, patience:0, destruction:0, jewel:0 } };
+    }
+
+    function loadInventory(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return blankInventory();
+        const p = JSON.parse(raw);
+        const inv = blankInventory();
+
+        Object.entries(gearDefs).forEach(([g, types]) => {
+          types.forEach(t => {
+            rarityOrder.forEach(r => {
+              const v = p?.equipment?.[g]?.[t]?.[r];
+              inv.equipment[g][t][r] = Number.isFinite(+v) ? Math.max(0, Math.floor(+v)) : 0;
+            });
+          });
+        });
+
+        inv.materials = (p && p.materials && typeof p.materials==="object") ? {
+          chaos: Number.isFinite(+p.materials.chaos) ? Math.max(0, Math.floor(+p.materials.chaos)) : 0,
+          patience: Number.isFinite(+p.materials.patience) ? Math.max(0, Math.floor(+p.materials.patience)) : 0,
+          destruction: Number.isFinite(+p.materials.destruction) ? Math.max(0, Math.floor(+p.materials.destruction)) : 0,
+          jewel: Number.isFinite(+p.materials.jewel) ? Math.max(0, Math.floor(+p.materials.jewel)) : 0,
+        } : { chaos:0, patience:0, destruction:0, jewel:0 };
+
+        return inv;
+      }catch(e){ return blankInventory(); }
+    }
+
+    function saveInventory(inv){ localStorage.setItem(STORAGE_KEY, JSON.stringify(inv)); }
+
+    let inventory = loadInventory();
+    ensureMaterials();
+
+    const statusPill = document.getElementById("statusPill");
+    function setStatus(msg){ statusPill.textContent = msg; }
+
+    function ensureMaterials(){
+      if(!inventory.materials) inventory.materials = { chaos:0, patience:0, destruction:0, jewel:0 };
+      ["chaos","patience","destruction","jewel"].forEach(k=>{
+        const v = inventory.materials[k];
+        inventory.materials[k] = Number.isFinite(+v) ? Math.max(0, Math.floor(+v)) : 0;
+      });
+    }
+
+    function renderMaterials(){
+      ensureMaterials();
+      // modal inputs
+      if(matInputs.chaos){
+        matInputs.chaos.value = inventory.materials.chaos;
+        matInputs.patience.value = inventory.materials.patience;
+        matInputs.destruction.value = inventory.materials.destruction;
+        matInputs.jewel.value = inventory.materials.jewel;
+      }
+      // right panel
+      if(invMatChaos){
+        invMatChaos.textContent = inventory.materials.chaos.toLocaleString("ko-KR");
+        invMatPatience.textContent = inventory.materials.patience.toLocaleString("ko-KR");
+        invMatDestruction.textContent = inventory.materials.destruction.toLocaleString("ko-KR");
+        invMatJewel.textContent = inventory.materials.jewel.toLocaleString("ko-KR");
+      }
+    }
+
+    function bindMaterialInputs(){
+      if(!matInputs.chaos) return;
+
+      Object.entries(matInputs).forEach(([k, el])=>{
+        el.addEventListener("input", ()=>{
+          ensureMaterials();
+          inventory.materials[k] = Math.max(0, Math.floor(+el.value || 0));
+          saveInventory(inventory);
+          renderMaterials();
+          mStatus.textContent = "변경됨 (자동 저장됨)";
+        });
+      });
+
+      if(matZeroBtn){
+        matZeroBtn.onclick = ()=>{
+          ensureMaterials();
+          inventory.materials = { chaos:0, patience:0, destruction:0, jewel:0 };
+          saveInventory(inventory);
+          renderMaterials();
+          mStatus.textContent = "재료 전체 0 처리됨";
+        };
+      }
+    }
+
+    function ownedCount(gear, type, rarity){ return inventory?.equipment?.[gear]?.[type]?.[rarity] ?? 0; }
+    function essenceForType(type){ return typeToEssence[type] || "chaos"; }
+    function iconFor(gear, type){ return getIconSrc(gear, type) || ""; }
+    function glyphFallback(gear){ return ({"무기":"W","투구":"H","갑옷":"A","신발":"B","목걸이":"N","방패":"S"})[gear] || "■"; }
+
+    function renderIconEl(gear, type){
+      const src = iconFor(gear,type);
+      if(src) return `<div class="icon"><img alt="" src="${src}"/></div>`;
+      return `<div class="icon"><span style="font-weight:990">${glyphFallback(gear)}·${(type||"").slice(0,2)}</span></div>`;
+    }
+
+    function nextRarity(r){
+      const idx = rarityOrder.indexOf(r);
+      return rarityOrder[Math.min(idx+1, rarityOrder.length-1)];
+    }
+    function canCraft(a,b){
+      if(!a || !b) return { ok:false, reason:"슬롯을 채워주세요." };
+      if(a.rarity !== b.rarity) return { ok:false, reason:"A와 B의 등급이 달라요." };
+      if(ownedCount(a.gear, a.type, a.rarity) <= 0) return { ok:false, reason:"A 보유 수량이 없어요." };
+      if(ownedCount(b.gear, b.type, b.rarity) <= 0) return { ok:false, reason:"B 보유 수량이 없어요." };
+      if(a.rarity === "God") return { ok:false, reason:"갓 등급은 더 이상 승급 불가" };
+      return { ok:true };
+    }
+    function calcNeedOne(a,b){
+      const need = { chaos:0, patience:0, destruction:0, jewel:0 };
+      if(!a || !b) return need;
+      need[essenceForType(a.type)] += (perItemCost[a.rarity] || 0);
+      need[essenceForType(b.type)] += (perItemCost[b.rarity] || 0);
+      need.jewel += (jewelCost[a.rarity] || 0);
+      return need;
+    }
+
+    // LEFT
+    const gearTabs = document.getElementById("gearTabs");
+    const rarityFilter = document.getElementById("rarityFilter");
+    const iconGrid = document.getElementById("iconGrid");
+    let activeGearTab = "신발";
+    let activeRarity = "Uncommon";
+
+    function renderGearTabs(){
+      gearTabs.innerHTML = "";
+      Object.keys(gearDefs).forEach(g => {
+        const b = document.createElement("button");
+        b.className = "tab" + (g===activeGearTab ? " active" : "");
+        b.textContent = g;
+        b.onclick = () => { activeGearTab = g; renderGearTabs(); renderIconGrid(); };
+        gearTabs.appendChild(b);
+      });
+    }
+
+    function renderRarityFilter(){
+      rarityFilter.innerHTML = "";
+      rarityOrder.forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r;
+        opt.textContent = rarityKr[r];
+        rarityFilter.appendChild(opt);
+      });
+      rarityFilter.value = activeRarity;
+      rarityFilter.onchange = () => { activeRarity = rarityFilter.value; renderIconGrid(); };
+    }
+
+    function renderIconGrid(){
+      iconGrid.innerHTML = "";
+      const types = gearDefs[activeGearTab];
+      let any = false;
+
+      types.forEach(typeName => {
+        const count = ownedCount(activeGearTab, typeName, activeRarity);
+        if(count <= 0) return;
+        any = true;
+
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        tile.onclick = () => pickItem({ gear: activeGearTab, type: typeName, rarity: activeRarity });
+
+        const essKey = essenceForType(typeName);
+        tile.innerHTML = `
+          <div class="tileTop">
+            ${renderIconEl(activeGearTab, typeName)}
+            <div class="qty">x ${count.toLocaleString("ko-KR")}</div>
+          </div>
+          <div class="name">${activeGearTab} · ${typeName}</div>
+          <div class="rar">${rarityKr[activeRarity]}</div>
+        `;
+        iconGrid.appendChild(tile);
+      });
+
+      if(!any){
+        const empty = document.createElement("div");
+        empty.className = "out";
+        empty.style.gridColumn = "1 / -1";
+        empty.innerHTML = `<div class="strong">표시할 장비가 없어요</div><div class="muted">인벤토리 설정에서 <span class="strong">${activeGearTab}</span> · <span class="strong">${rarityKr[activeRarity]}</span> 수량을 1 이상으로 등록해주세요</div>`;
+        iconGrid.appendChild(empty);
+      }
+      renderRightInventory();
+      renderMaterials();
+    }
+
+
+    // Combine
+    const slotAEl = document.getElementById("slotA");
+    const slotBEl = document.getElementById("slotB");
+    const outBox = document.getElementById("outBox");
+    const doCraftBtn = document.getElementById("doCraft");
+    const previewBtn = document.getElementById("previewCraft");
+    const craftTimesEl = document.getElementById("craftTimes");
+
+    const needChaos = document.getElementById("needChaos");
+    const needPatience = document.getElementById("needPatience");
+    const needDestruction = document.getElementById("needDestruction");
+    const needJewel = document.getElementById("needJewel");
+
+    // Materials inventory (정수/보석)
+    const matInputs = {
+      chaos: document.getElementById("matChaos"),
+      patience: document.getElementById("matPatience"),
+      destruction: document.getElementById("matDestruction"),
+      jewel: document.getElementById("matJewel"),
+    };
+    const matZeroBtn = document.getElementById("matZero");
+    const invMatChaos = document.getElementById("invMatChaos");
+    const invMatPatience = document.getElementById("invMatPatience");
+    const invMatDestruction = document.getElementById("invMatDestruction");
+    const invMatJewel = document.getElementById("invMatJewel");
+
+
+    let slotA = null;
+    let slotB = null;
+
+    function renderPicked(item, which){
+      const count = ownedCount(item.gear, item.type, item.rarity);
+      const ess = essenceNames[essenceForType(item.type)];
+      return `
+        ${renderIconEl(item.gear, item.type)}
+        <div style="display:grid;gap:2px">
+          <div class="strong">${item.gear} · ${item.type} <span class="muted">(${rarityKr[item.rarity]})</span></div>
+          <div class="muted">현재 보유: ${count} 개 ${ess}  1개당 ${perItemCost[item.rarity]}개</div>
+        </div>
+        <button class="btn" style="margin-left:auto;padding:9px 10px" onclick="event.stopPropagation(); window.__clearSlot('${which}')">빼기</button>
+      `;
+    }
+    window.__clearSlot = (which) => {
+      if(which==="A") slotA = null;
+      if(which==="B") slotB = null;
+      updatePreview();
+    };
+
+    function renderSlots(){
+      slotAEl.innerHTML = slotA ? renderPicked(slotA,"A") : `<div class="empty">아이콘을 클릭해서 선택</div>`;
+      slotBEl.innerHTML = slotB ? renderPicked(slotB,"B") : `<div class="empty">아이콘을 클릭해서 선택</div>`;
+    }
+    function pickItem(item){
+      if(!slotA) slotA = item;
+      else if(!slotB) slotB = item;
+      else slotA = item;
+      updatePreview();
+    }
+
+    
+    function updatePreview(){
+      renderSlots();
+      const check = canCraft(slotA, slotB);
+      const ok = check.ok;
+
+      const possible = (ok && slotA && slotB) ? maxCraftTimes({a:slotA,b:slotB,outR:null,need:null}, craftTimesEl.value) : 0;
+
+      doCraftBtn.disabled = !(ok && possible>0);
+      previewBtn.disabled = !(ok && possible>0);
+
+      const need = (slotA && slotB) ? calcNeedOne(slotA, slotB) : { chaos:0, patience:0, destruction:0, jewel:0 };
+      needChaos.textContent = need.chaos.toLocaleString("ko-KR");
+      needPatience.textContent = need.patience.toLocaleString("ko-KR");
+      needDestruction.textContent = need.destruction.toLocaleString("ko-KR");
+      if(needJewel) needJewel.textContent = need.jewel.toLocaleString("ko-KR");
+
+      if(!slotA || !slotB){
+        outBox.textContent = "A와 B를 선택하면 결과가 표시됩니다.";
+        window.__craftPreview = null;
+        return;
+      }
+      if(!ok){
+        outBox.innerHTML = `<div class="strong bad">${check.reason}</div>`;
+        window.__craftPreview = null;
+        return;
+      }
+      const outR = nextRarity(slotA.rarity);
+      outBox.innerHTML = `
+        <div class="strong ok">조합 가능</div>
+        <div style="margin-top:6px">결과: <span class="strong">${slotA.gear} · ${slotA.type}</span> <span class="muted">(${rarityKr[outR]})</span> <span class="strong">+1</span></div>
+        <div class="muted" style="margin-top:6px">
+          소모: A(${essenceNames[essenceForType(slotA.type)]} ${perItemCost[slotA.rarity]}) + B(${essenceNames[essenceForType(slotB.type)]} ${perItemCost[slotB.rarity]})
+        </div>
+      `;
+      window.__craftPreview = { a: slotA, b: slotB, outR, need };
+    }
+
+    // Log
+    const logEl = document.getElementById("log");
+    function addLog(title, lines){
+      const div = document.createElement("div");
+      div.className = "logItem";
+      div.innerHTML = `<div class="t">${title}</div>` + lines.map(l => `<div class="s">${l}</div>`).join("");
+      logEl.prepend(div);
+    }
+
+        
+    function materialsPossible(need){
+      ensureMaterials();
+      let possible = Infinity;
+      const keys = ["chaos","patience","destruction","jewel"];
+      keys.forEach(k=>{
+        const n = Math.max(0, Math.floor(+need[k] || 0));
+        if(n>0){
+          possible = Math.min(possible, Math.floor(inventory.materials[k] / n));
+        }
+      });
+      return Number.isFinite(possible) ? possible : 0;
+    }
+
+    function deductMaterials(need, times){
+      ensureMaterials();
+      const keys = ["chaos","patience","destruction","jewel"];
+      keys.forEach(k=>{
+        const n = Math.max(0, Math.floor(+need[k] || 0));
+        inventory.materials[k] = Math.max(0, inventory.materials[k] - (n*times));
+      });
+      saveInventory(inventory);
+      renderMaterials();
+    }
+
+    function maxCraftTimes(p, requested){
+      requested = Math.max(1, Math.floor(+requested || 1));
+      const aKeySameB = (p.a.gear===p.b.gear && p.a.type===p.b.type && p.a.rarity===p.b.rarity);
+      const aCount = ownedCount(p.a.gear, p.a.type, p.a.rarity);
+      const bCount = ownedCount(p.b.gear, p.b.type, p.b.rarity);
+      const possible = aKeySameB ? Math.floor(aCount/2) : Math.min(aCount, bCount);
+      return Math.min(requested, possible);
+    }
+
+    function craftOnce(p){
+      const {a,b,outR} = p;
+      inventory.equipment[a.gear][a.type][a.rarity] = Math.max(0, inventory.equipment[a.gear][a.type][a.rarity] - 1);
+      inventory.equipment[b.gear][b.type][b.rarity] = Math.max(0, inventory.equipment[b.gear][b.type][b.rarity] - 1);
+      inventory.equipment[a.gear][a.type][outR] += 1;
+    }
+    function doCraft(times){
+      const p = window.__craftPreview;
+      if(!p) return;
+      const baseCheck = canCraft(p.a, p.b);
+      if(!baseCheck.ok) return;
+
+      times = Math.max(1, Math.floor(+times || 1));
+      let runTimes = maxCraftTimes(p, times);
+      // 재료(정수/보석)도 부족하면 실행 횟수 제한
+      const matTimes = materialsPossible(p.need);
+      runTimes = Math.min(runTimes, matTimes);
+      if(runTimes <= 0){
+        addLog("조합 실패", ["보유 장비 또는 재료(정수/보석) 수량이 부족해서 조합할 수 없습니다."]); 
+        setStatus("수량 부족");
+        updatePreview();
+        return;
+      }
+
+      for(let i=0;i<runTimes;i++) craftOnce(p);
+
+      saveInventory(inventory);
+      deductMaterials(p.need, runTimes);
+
+      addLog("조합 실행", [
+        `횟수: ${runTimes}회${ runTimes < times ? " (보유 수량 부족으로 일부만 실행)" : "" }`,
+        `A: ${p.a.gear}·${p.a.type} ${rarityKr[p.a.rarity]} -${runTimes}`,
+        `B: ${p.b.gear}·${p.b.type} ${rarityKr[p.b.rarity]} -${runTimes}`,
+        `결과: ${p.a.gear}·${p.a.type} ${rarityKr[p.outR]} +${runTimes}`,
+        `소모: 혼돈 +${(p.need.chaos*runTimes)}, 인내 +${(p.need.patience*runTimes)}, 파괴 +${(p.need.destruction*runTimes)}, 보석 +${(p.need.jewel*runTimes)}`, 
+        `재료 잔여: 혼돈 ${inventory.materials.chaos}, 인내 ${inventory.materials.patience}, 파괴 ${inventory.materials.destruction}, 보석 ${inventory.materials.jewel}`
+      ]);
+
+      if(ownedCount(p.a.gear, p.a.type, p.a.rarity) <= 0) slotA = null;
+      if(ownedCount(p.b.gear, p.b.type, p.b.rarity) <= 0) slotB = null;
+
+      setStatus("조합 완료");
+      renderIconGrid();
+      renderRightInventory();
+      updatePreview();
+    }
+
+    // RIGHT inventory
+    const invTabsRight = document.getElementById("invTabsRight");
+    const invTitle = document.getElementById("invTitle");
+    const invMatrix = document.getElementById("invMatrix");
+    let rightTab = "신발";
+    // v6: 우측 인벤토리 등급 창(3개씩 보여주기)
+    let rarityWindowStart = 0; // unused (window navigation removed)
+    const rarityWindowSize = rarityOrder.length;
+
+    function renderRightTabs(){
+      invTabsRight.innerHTML = "";
+      Object.keys(gearDefs).forEach(g => {
+        const b = document.createElement("button");
+        b.className = "tab" + (g===rightTab ? " active" : "");
+        b.textContent = g;
+        b.onclick = () => { rightTab = g; renderRightTabs(); renderRightInventory(); };
+        invTabsRight.appendChild(b);
+      });
+    }
+    function renderRightInventory(){
+      invTitle.textContent = rightTab;
+      invMatrix.innerHTML = "";
+
+      const isNarrow = window.matchMedia("(max-width: 860px)").matches;
+      const cols = isNarrow ? rarityOrder.slice(rarityWindowStart, rarityWindowStart + rarityWindowSize) : rarityOrder;
+
+      const colCount = cols.length;
+      invMatrix.style.gridTemplateColumns = `260px repeat(${colCount}, 1fr)`;
+
+      const header = [`<div class="cell left"><span class="strong">종류</span></div>`]
+        .concat(cols.map(r => `<div class="cell">${rarityKr[r]}</div>`)).join("");
+      invMatrix.insertAdjacentHTML("beforeend", header);
+
+      gearDefs[rightTab].forEach(typeName => {
+        const left = `
+          <div class="cell left">
+            <div class="miniIcon">${iconFor(rightTab,typeName) ? `<img alt="" src="${iconFor(rightTab,typeName)}" onerror="this.style.display='none'">` : ""}</div>
+            <div>
+              <div class="strong">${typeName}</div>
+              <div class="muted" style="font-size:11px">${essenceNames[essenceForType(typeName)]}</div>
+            </div>
+          </div>`;
+        const counts = cols.map(r => `<div class="cell count">${ownedCount(rightTab,typeName,r)}</div>`).join("");
+        invMatrix.insertAdjacentHTML("beforeend", left + counts);
+      });
+    }
+
+    // Modal inventory
+    const overlay = document.getElementById("modalOverlay");
+    const mTabs = document.getElementById("mTabs");
+    const mGrid = document.getElementById("mGrid");
+    const mStatus = document.getElementById("mStatus");
+    bindMaterialInputs();
+    let modalTab = "무기";
+
+    function openModal(){ overlay.classList.add("show"); overlay.setAttribute("aria-hidden","false"); renderModalTabs(); renderModalTab(); renderMaterials(); mStatus.textContent="저장 준비됨"; }
+    function closeModal(){ overlay.classList.remove("show"); overlay.setAttribute("aria-hidden","true"); }
+
+    function renderModalTabs(){
+      mTabs.innerHTML = "";
+      Object.keys(gearDefs).forEach(g => {
+        const b = document.createElement("button");
+        b.className = "mTab" + (g===modalTab ? " active" : "");
+        b.textContent = g;
+        b.onclick = () => { modalTab = g; renderModalTabs(); renderModalTab(); };
+        mTabs.appendChild(b);
+      });
+    }
+    function renderModalTab(){
+      mGrid.innerHTML = "";
+      gearDefs[modalTab].forEach(typeName => {
+        const card = document.createElement("div");
+        card.className = "mCard";
+        card.innerHTML = `
+          <div class="mCardHead">
+            <div class="mHeadL">
+              ${renderIconEl(modalTab, typeName)}
+              <b>${modalTab} · ${typeName}</b>
+            </div>
+            <span class="muted">커먼~갓</span>
+          </div>
+          <div class="mInputs"></div>
+        `;
+        const inputs = card.querySelector(".mInputs");
+        rarityOrder.forEach(r => {
+          const lab = document.createElement("label");
+          lab.innerHTML = `
+            <span>${rarityKr[r]}</span>
+            <input type="number" min="0" step="1" value="${ownedCount(modalTab,typeName,r)}"
+              data-gear="${modalTab}" data-type="${typeName}" data-rarity="${r}">
+          `;
+          inputs.appendChild(lab);
+        });
+        mGrid.appendChild(card);
+      });
+
+      overlay.querySelectorAll("input[data-gear]").forEach(inp => {
+        inp.addEventListener("input", () => mStatus.textContent = "변경됨 (저장 필요)");
+      });
+    }
+
+    function readModalToInventory(){
+      const next = loadInventory();
+      overlay.querySelectorAll("input[data-gear]").forEach(inp => {
+        const g = inp.dataset.gear;
+        const t = inp.dataset.type;
+        const r = inp.dataset.rarity;
+        const v = Math.max(0, Math.floor(+inp.value || 0));
+        next.equipment[g][t][r] = v;
+      });
+      return next;
+    }
+
+    function zeroModalTab(){
+      overlay.querySelectorAll(`input[data-gear="${modalTab}"]`).forEach(i => i.value = 0);
+      mStatus.textContent = "현재 탭 전체 0 (저장 필요)";
+    }
+
+    async function exportInventory(){
+      const json = JSON.stringify(inventory, null, 2);
+      try{ await navigator.clipboard.writeText(json); setStatus("JSON 복사됨"); }
+      catch(e){ window.prompt("복사해서 저장:", json); }
+    }
+    function importInventory(){
+      const pasted = window.prompt("붙여넣을 인벤토리 JSON 입력:");
+      if(!pasted) return;
+      try{
+        const parsed = JSON.parse(pasted);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        inventory = loadInventory();
+        setStatus("가져오기 완료");
+        renderIconGrid(); renderRightInventory(); updatePreview();
+      }catch(e){ setStatus("가져오기 실패"); }
+    }
+
+    // Events
+    
+    // =========================
+    // Event bindings
+    // =========================
+    document.getElementById("openInv").addEventListener("click", openModal);
+    document.getElementById("closeInv").addEventListener("click", closeModal);
+
+    // overlay click closes
+    overlay.addEventListener("click", (e) => { if(e.target === overlay) closeModal(); });
+    // Esc closes
+    document.addEventListener("keydown", (e) => { if(e.key === "Escape" && overlay.classList.contains("show")) closeModal(); });
+
+    // 현재 탭 0
+    document.getElementById("tabZero").addEventListener("click", () => {
+      overlay.querySelectorAll(`input[data-gear="${modalTab}"]`).forEach(i => i.value = 0);
+      mStatus.textContent = "현재 탭 전체 0 (저장 필요)";
+    });
+
+    // 저장
+    document.getElementById("saveInv").addEventListener("click", () => {
+      inventory = readModalToInventory();
+      saveInventory(inventory);
+      renderGearTabs();
+      renderRarityFilter();
+      renderRightTabs();
+      renderIconGrid();
+      renderRightInventory();
+      renderMaterials();
+      updatePreview();
+      mStatus.textContent = "저장됨";
+      closeModal();
+      addLog("인벤토리 저장", ["보유 장비/재료가 저장되었습니다."]);
+      setStatus("인벤토리 저장됨");
+    });
+
+    // 슬롯 초기화
+    document.getElementById("clearSlots").addEventListener("click", () => {
+      slotA = null; slotB = null;
+      updatePreview();
+      setStatus("슬롯 초기화");
+    });
+
+    // 미리보기 로그
+    document.getElementById("previewCraft").addEventListener("click", () => {
+      updatePreview();
+      const p = window.__craftPreview;
+      if(!p){ addLog("미리보기", ["선택된 조합이 없습니다."]); return; }
+      addLog("미리보기", [
+        `결과: ${p.a.gear}·${p.a.type} ${rarityKr[p.outR]} +1`,
+        `소모(1회): 혼돈 ${p.need.chaos}, 인내 ${p.need.patience}, 파괴 ${p.need.destruction}, 보석 ${p.need.jewel}`
+      ]);
+      setStatus("미리보기 기록됨");
+    });
+
+    // 조합 실행
+    document.getElementById("doCraft").addEventListener("click", () => doCraft(craftTimesEl.value));
+
+    // 로그 초기화
+    document.getElementById("clearLog").addEventListener("click", () => {
+      logEl.innerHTML = "";
+      addLog("로그", ["로그가 초기화되었습니다."]);
+      setStatus("로그 초기화");
+    });
+
+    // 내보내기/가져오기
+    document.getElementById("exportInv").addEventListener("click", exportInventory);
+    document.getElementById("importInv").addEventListener("click", importInventory);
+
+    // 우측 인벤토리: 화면 리사이즈 시 표 재렌더
+    window.addEventListener("resize", () => { renderRightInventory(); });
+
+    // Init
+    function init(){
+      ensureMaterials();
+      renderGearTabs();
+      renderRarityFilter();
+      renderRightTabs();
+      renderIconGrid();
+      renderRightInventory();
+      renderMaterials();
+      updatePreview();
+      setStatus("준비됨");
+    }
+    init();
+
+
+  </script>
+</body>
+</html>
