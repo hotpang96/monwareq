@@ -71,6 +71,8 @@ body{
     .dot{width:10px;height:10px;border-radius:999px;opacity:.9}
     .dot.r{background:#ff5f57} .dot.y{background:#ffbd2e} .dot.g{background:#28c840}
     h1{margin:0;font-size:14px;font-weight:990;letter-spacing:-.2px}
+  .brandIcon{width:34px;height:34px;object-fit:contain;border-radius:4px;box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);}
+
     .sub{color:var(--muted);font-size:12px;font-weight:800}
     .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .btn{
@@ -494,14 +496,13 @@ input[type="number"],
             <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
           </div>
           <div>
-            <h1>몬스터 워로드 장비 시뮬레이션</h1>
+            <h1><img class="brandIcon" src="icons/마크.jpg" alt="마크">몬스터 워로드 장비 시뮬레이션</h1>
             <div class="sub">Made By 써밋</div>
           </div>
         </div>
         <div class="actions">
           <button class="btn primary" id="openInv">인벤토리 설정</button>
-          <span class="pill" id="statusPill">준비됨</span>
-        </div>
+</div>
       </div>
 
       <div class="grid">
@@ -635,11 +636,7 @@ input[type="number"],
 
             <div class="row" style="justify-content:space-between">
               <span class="muted">표시는 “종류 × 등급” 수량표</span>
-              <div class="row">
-                <button class="btn" id="exportInv">내보내기(JSON)</button>
-                <button class="btn" id="importInv">가져오기(JSON)</button>
-              </div>
-            </div>
+</div>
           </div>
         </div>
       </div>
@@ -801,7 +798,7 @@ function getIconSrc(gear, type) {
     ensureMaterials();
 
     const statusPill = document.getElementById("statusPill");
-    function setStatus(msg){ statusPill.textContent = msg; }
+    function setStatus(msg){ if(statusPill) statusPill.textContent = msg; }
 
     function ensureMaterials(){
       if(!inventory.materials) inventory.materials = { chaos:0, patience:0, destruction:0, jewel:0 };
@@ -1341,10 +1338,12 @@ function getIconSrc(gear, type) {
     });
 
     // 내보내기/가져오기
-    document.getElementById("exportInv").addEventListener("click", exportInventory);
-    document.getElementById("importInv").addEventListener("click", importInventory);
+    const exportInvBtn = document.getElementById("exportInv");
+    if(exportInvBtn) exportInvBtn.addEventListener("click", exportInventory);
+    const importInvBtn = document.getElementById("importInv");
+    if(importInvBtn) importInvBtn.addEventListener("click", importInventory);
 
-    // 우측 인벤토리: 화면 리사이즈 시 표 재렌더
+// 우측 인벤토리: 화면 리사이즈 시 표 재렌더
     window.addEventListener("resize", () => { renderRightInventory(); });
 
     // Init
